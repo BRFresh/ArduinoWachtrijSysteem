@@ -2,12 +2,15 @@ from pyfirmata2 import Arduino, util
 import time
 from LCD import LCD
 
-debuggen = False
+debuggen = True
 
 ### - Setupwerk
 board = Arduino('COM4')
 board.samplingOn(10)
 lcd = LCD(board)
+
+
+
 
 pin2_input = board.get_pin('d:2:i')  # Digital pin 2 as input
 pin3_output = board.get_pin('d:3:o')  # Digital pin 3 as output
@@ -16,15 +19,24 @@ pin5_output = board.get_pin('d:5:o')
 pin6_input = board.get_pin('d:6:i')
 pin7_output = board.get_pin('d:7:o')
 
+if debuggen:
+    print(f"INF.001 De arduino is verbonden en pins zijn goed geregistreerd")
+
 # reporting
 pin2_input.enable_reporting()
 pin4_input.enable_reporting()
 pin6_input.enable_reporting()
 
+if debuggen:
+    print(f"INF.002 Reporting voor pins 2, 4 & 6 is successvol aangezet")
+
 # power pins configreren voor sensoren (5v 40mA max)
 pin3_output.write(1)
 pin5_output.write(1)
 pin7_output.write(1)
+
+if debuggen:
+    print(f"INF.003 Pin 3, 5 & 7 leveren nu stroom naar de lasers")
 
 #Callback functies
 def pin2_callback(data):
@@ -43,6 +55,9 @@ pin2_input.register_callback(pin2_callback)
 pin4_input.register_callback(pin4_callback)
 pin6_input.register_callback(pin6_callback)
 
+if debuggen:
+    print(f"INF.004 Callback-functies voor pin2, pin4, en pin6 geregistreerd.")
+
 ### |
 
 ### - Def functies
@@ -52,20 +67,37 @@ def bezoeker_in():
     # Wait for PIN2 to go from True to False
     if pin2_value:  # Check if PIN2 starts as True
         start_time = time.time()
+
+        if debuggen:
+            print(f"INF.007 Bezoeker in detectie gestart, PIN2: {pin2_value}, PIN6: {pin6_value}.")
+
         while pin2_value:  # Wait until PIN2 becomes False
             if time.time() - start_time > 1:  # Timeout after 1 second
+
+                if debuggen:
+                    print(f"ERR.001 Timeout: PIN2 of PIN6 heeft niet correct getriggerd.")
+
                 return 0
+
 
         # PIN2 is now False; start waiting for PIN6 to go True
         start_time = time.time()
         while not pin6_value:  # Wait until PIN6 becomes True
             if time.time() - start_time > 1:  # Timeout after 1 second
+
+                if debuggen:
+                    print(f"ERR.001 Timeout: PIN2 of PIN6 heeft niet correct getriggerd.")
+
                 return 0
 
         # PIN6 is now True; wait for it to become False
         start_time = time.time()
         while pin6_value:  # Wait until PIN6 becomes False
             if time.time() - start_time > 1:  # Timeout after 1 second
+
+                if debuggen:
+                    print(f"ERR.001 Timeout: PIN2 of PIN6 heeft niet correct getriggerd.")
+
                 return 0
 
         # Successful sequence
@@ -76,6 +108,9 @@ def bezoeker_in():
 
 def bezoeker_uit():
     if pin4_value:
+
+        if debuggen:
+            print(f"INF.008 Bezoeker-uit detectie gestart, PIN4: {pin4_value}.")
 
         while True:
             if pin4_value:
@@ -91,6 +126,10 @@ def bezoeker_uit_via_ingang():
 
     if pin6_value:  # Check if PIN6 starts as True
         start_time = time.time()
+
+        if debuggen:
+            print(f"INF.009 Bezoeker-uit-via-ingang detectie, PIN6: {pin6_value}, PIN2: {pin2_value}.")
+
         while pin6_value:  # Wait until PIN6 becomes False
             if time.time() - start_time > 1:  # Timeout after 1 second
                 return 0
@@ -136,6 +175,9 @@ def bepaal_update_status():
     else:
         status = "Leeg"
 
+    if debuggen:
+        print(f"INF.006 Status geüpdatet: {status}, Overvol: {status_overvol}.")
+
 
     #Overvol toevoegen als helemaal vol?
 
@@ -144,6 +186,9 @@ def check_overflow_of_negatief_aantal_bezoekers(wachtrij_uitgang_type):
     if wachtrij_uitgang_type == 1:
         if bezoeker_in_wachtrij + 1 > wachtrij_max:
             print("Overflow: Wachtrij is vol er kan niemand meer bij")
+
+            if debuggen:
+                print(f"ERR.003 Fout: Overflow of underflow gedetecteerd bij wachtrij.")
 
             return True
         else:
@@ -154,6 +199,10 @@ def check_overflow_of_negatief_aantal_bezoekers(wachtrij_uitgang_type):
     elif wachtrij_uitgang_type == 2:
         if bezoeker_in_wachtrij - 1 < 0:
             print("Underflow: Wachtrij is al leeg er kan niemand meer uit")
+
+            if debuggen:
+                print(f"ERR.003 Fout: Overflow of underflow gedetecteerd bij wachtrij.")
+
             return True
 
         else:
@@ -162,6 +211,10 @@ def check_overflow_of_negatief_aantal_bezoekers(wachtrij_uitgang_type):
     elif wachtrij_uitgang_type == 3:
         if bezoeker_in_wachtrij - 1 < 0:
             print("Underflow: Wachtrij is al leeg er kan niemand meer uit")
+
+            if debuggen:
+                print(f"ERR.003 Fout: Overflow of underflow gedetecteerd bij wachtrij.")
+
             return True
 
         else:
@@ -170,6 +223,9 @@ def check_overflow_of_negatief_aantal_bezoekers(wachtrij_uitgang_type):
 def bereken_wachttijd():
     global wachttijd
     wachttijd = bezoeker_in_wachtrij / verwerkingstijd_per_minuut
+
+    if debuggen:
+        print(f"INF.005 Wachttijd berekend: {wachttijd} minuten.")
 
 
 def line1_lcd():
@@ -239,6 +295,10 @@ def update_lcd():
         lcd.print(line_1_preload)
         lcd.set_cursor(0,1)
         lcd.print(line_2_preload)
+
+        if debuggen:
+            print(f"INF.010 LCD succesvol geüpdatet met wachtrijstatus.")
+
         print("LCD has been refreshed")
 
         elapsed_since_lcd_update = current_time
@@ -260,9 +320,11 @@ def update_lcd():
 
 # defineer variabelen
 # previous_pin2_value, previous_pin4_value = False, False
-bezoeker_in_wachtrij, wachtrij_max = 0, 100
 pin2_value, pin4_value, pin6_value, status_overvol = False, False, False, False
+
+bezoeker_in_wachtrij, wachtrij_max = 0, 100
 verwerkingstijd_per_minuut, wachttijd = 0.1, 0
+
 last_update = time.time()
 elapsed_since_lcd_update = time.time()
 
@@ -285,10 +347,12 @@ if verwerkingstijd_per_minuut <= 0:
 
 
 while True:
-    debug_info = f"pin 2 = {pin2_value}, pin 6 = {pin6_value}, er zitten nu {bezoeker_in_wachtrij} in de wachtrij, status = {status} en de inloop = {wachttijd} min"
-    if debug_info != previous_string:
-        print(debug_info)
-        previous_string = debug_info
+    debug_info = f"INF.011pin 2 = {pin2_value}, pin4 = {pin4_value}, pin 6 = {pin6_value}, er zitten nu {bezoeker_in_wachtrij} in de wachtrij, status = {status} en de inloop = {wachttijd} min"
+
+    if debuggen:
+        if debug_info != previous_string:
+            print(debug_info)
+            previous_string = debug_info
 
 
     if bezoeker_in():
